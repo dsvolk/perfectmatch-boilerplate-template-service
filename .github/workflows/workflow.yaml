@@ -1,0 +1,37 @@
+name: Test & Build
+on:
+  workflow_dispatch:
+    inputs:
+      runTest:
+        description: 'test (true/false)' 
+        type: boolean
+        required: false
+        default: true
+      tag_version:
+        description: 'Upload to ECR (true/false)'
+        type: boolean
+        required: false
+        default: false
+      deploy:
+        description: 'Deploy to dev (true/false)'
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: ['*']
+jobs:
+  npm-test:
+    uses: TalentFabric/github-workflows/.github/workflows/test-nodejs.yaml@master
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  docker:
+    uses: TalentFabric/github-workflows/.github/workflows/build-workflow.yaml@master
+    if: ( (github.ref_name  == 'master') || github.event.inputs.tag_version == 'true' ) && !contains(github.event.head_commit.message, '#skip-build')
+    with:
+      tag_version: ${{ fromJSON( ( (github.ref_name  == 'master') || (contains(github.ref_name, '-hf')) ) || github.event.inputs.tag_version ) }}
+      deploy: ${{ fromJSON( github.ref_name  == 'master' || github.event.inputs.deploy ) }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      GH_PAT: ${{ secrets.GH_PAT }}
